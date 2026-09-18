@@ -13,12 +13,15 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - ADMIN_PASSWORD=admin
-      - JWT_SECRET=change-this-to-a-secure-secret-string-in-production
+      # JWT_SECRET: Thay đổi thành chuỗi bí mật tối thiểu 32 ký tự khi chạy thực tế (openssl rand -base64 32)
+      - JWT_SECRET=service-hub-jwt-secret-key-32chars
       - DOCKER_SOCKET_PATH=/var/run/docker.sock
     volumes:
       # Persistent storage for service cards and portal configurations
       - ./data:/app/data
-      # Mount host Docker socket in read-only mode to auto-discover local containers
+      # Mount host Docker socket:
+      # - Dùng :ro (Read-Only) để giám sát và tự động khám phá container (khuyến nghị bảo mật)
+      # - Đổi sang :rw nếu bạn muốn sử dụng tính năng 'Restart Container' trực tiếp từ giao diện
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/services"]

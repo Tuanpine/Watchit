@@ -50,10 +50,13 @@ export default function App() {
         setUser(data.user);
       } else {
         setUser(null);
+        setToken(null);
         localStorage.removeItem('admin_token');
       }
     } catch {
       setUser(null);
+      setToken(null);
+      localStorage.removeItem('admin_token');
     }
   }, [token]);
 
@@ -183,6 +186,7 @@ export default function App() {
     setPortalSubtitle(subtitle);
   };
 
+  const hasCheckedHealth = Object.keys(healthMap).length > 0;
   const onlineCount = Object.values(healthMap).filter((h) => h.status === 'online').length;
 
   return (
@@ -197,8 +201,9 @@ export default function App() {
         onLogout={handleLogout}
         isCheckingHealth={isCheckingHealth}
         onRefreshHealth={refreshAllHealth}
-        onlineCount={onlineCount || services.length}
+        onlineCount={onlineCount}
         totalServices={services.length}
+        hasCheckedHealth={hasCheckedHealth}
       />
 
       {/* Main Content Body */}

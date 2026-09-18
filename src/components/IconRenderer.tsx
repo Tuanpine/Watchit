@@ -64,6 +64,12 @@ const ICON_ALIAS_MAP: Record<string, keyof typeof Icons> = {
 };
 
 export const IconRenderer: React.FC<IconRendererProps> = ({ name, className = 'w-5 h-5', size = 20, ...props }) => {
+  const [hasImgError, setHasImgError] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasImgError(false);
+  }, [name]);
+
   if (!name) {
     const Fallback = Icons.Box;
     return <Fallback className={className} size={size} {...props} />;
@@ -71,16 +77,17 @@ export const IconRenderer: React.FC<IconRendererProps> = ({ name, className = 'w
 
   // Check if it's an image or svg URL
   if (name.startsWith('http://') || name.startsWith('https://') || name.startsWith('data:') || name.startsWith('/')) {
+    if (hasImgError) {
+      const Fallback = Icons.Globe;
+      return <Fallback className={className} size={size} {...props} />;
+    }
     return (
       <img
         src={name}
         alt="service icon"
         className={`${className} object-contain rounded`}
         style={{ width: size, height: size }}
-        onError={(e) => {
-          // fallback to generic icon on image load error
-          (e.currentTarget as HTMLElement).style.display = 'none';
-        }}
+        onError={() => setHasImgError(true)}
       />
     );
   }

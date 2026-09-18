@@ -347,6 +347,12 @@ export const MiniDashboardWidget: React.FC<MiniDashboardWidgetProps> = ({
               <span className="flex items-center gap-1.5 font-medium text-[var(--text-muted)]">
                 <Activity size={14} className="text-emerald-500" />
                 <span>Tổng Hợp Uptime 30 Ngày</span>
+                <span
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-muted)]"
+                  title="Chỉ số lịch sử được ước tính dựa trên telemetry trạng thái hiện tại"
+                >
+                  Mô phỏng
+                </span>
               </span>
               <span className="font-mono text-emerald-500 font-bold text-xs">
                 {currentReliabilityPercent}% Uptime

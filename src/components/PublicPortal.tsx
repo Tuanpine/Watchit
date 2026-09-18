@@ -112,7 +112,14 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Auto-refresh interval timer
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleManualRefresh = () => {
+    setRefreshKey((k) => k + 1);
+    onRefreshAllHealth();
+  };
+
+  // Auto-refresh interval timer (resets whenever manual refresh is executed or interval changes)
   useEffect(() => {
     if (autoRefreshSecs <= 0) return;
     const interval = setInterval(() => {
@@ -121,20 +128,25 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
       }
     }, autoRefreshSecs * 1000);
     return () => clearInterval(interval);
-  }, [autoRefreshSecs, isCheckingHealth, onRefreshAllHealth]);
+  }, [autoRefreshSecs, isCheckingHealth, onRefreshAllHealth, refreshKey]);
 
-  // Derive categories
+  // Filter only visible services for public portal display
+  const visibleServices = useMemo(() => {
+    return services.filter((s) => s.is_visible !== false);
+  }, [services]);
+
+  // Derive categories strictly from visible services
   const categories = useMemo(() => {
     const set = new Set<string>();
-    services.forEach((s) => {
+    visibleServices.forEach((s) => {
       if (s.category) set.add(s.category);
     });
     return ['All', ...Array.from(set).sort()];
-  }, [services]);
+  }, [visibleServices]);
 
   // Filter & Sort
   const filteredServices = useMemo(() => {
-    return services
+    return visibleServices
       .filter((service) => {
         // Category filter
         if (selectedCategory !== 'All' && service.category !== selectedCategory) {
@@ -247,7 +259,7 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
             <Radio size={14} className="text-[var(--status-online)]" />
             <span className="text-[var(--text-secondary)]">Health:</span>
             <span className="font-mono font-semibold text-[var(--text-primary)]">{onlineCount}</span>
-            <span className="text-[var(--text-muted)]">/ {services.length}</span>
+            <span className="text-[var(--text-muted)]">/ {visibleServices.length}</span>
           </div>
 
           {/* Auto Refresh Dropdown */}
@@ -278,7 +290,7 @@ export const PublicPortal: React.FC<PublicPortalProps> = ({
 
           {/* Manual Refresh */}
           <button
-            onClick={onRefreshAllHealth}
+            onClick={handleManualRefresh}
             disabled={isCheckingHealth}
             title="Refresh all service health status"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs text-[var(--text-primary)] transition-all disabled:opacity-50"

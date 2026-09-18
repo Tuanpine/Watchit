@@ -13,6 +13,7 @@ interface NavbarProps {
   onRefreshHealth: () => void;
   onlineCount: number;
   totalServices: number;
+  hasCheckedHealth?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -25,7 +26,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   isCheckingHealth,
   onRefreshHealth,
   onlineCount,
-  totalServices
+  totalServices,
+  hasCheckedHealth = false
 }) => {
   const themes: Array<{ id: ThemeMode; label: string; color: string }> = [
     { id: 'forest', label: 'Dark Forest', color: '#22c55e' },
@@ -63,9 +65,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Quick status pill */}
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
-            <span className="w-2 h-2 rounded-full bg-[var(--status-online)] animate-pulse" />
-            <span className="font-mono text-[11px] font-medium text-[var(--text-primary)]">{onlineCount}/{totalServices}</span>
-            <span className="text-[11px] text-[var(--text-muted)]">online</span>
+            <span
+              className={`w-2 h-2 rounded-full ${
+                hasCheckedHealth
+                  ? onlineCount > 0
+                    ? 'bg-[var(--status-online)] animate-pulse'
+                    : 'bg-[var(--status-offline)]'
+                  : 'bg-zinc-400 dark:bg-zinc-500'
+              }`}
+            />
+            <span className="font-mono text-[11px] font-medium text-[var(--text-primary)]">
+              {hasCheckedHealth ? `${onlineCount}/${totalServices}` : `--/${totalServices}`}
+            </span>
+            <span className="text-[11px] text-[var(--text-muted)]">
+              {hasCheckedHealth ? 'online' : 'untested'}
+            </span>
           </div>
         </div>
 

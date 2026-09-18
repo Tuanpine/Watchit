@@ -17,7 +17,14 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
 }) => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [customInput, setCustomInput] = useState('');
+  const isCustomUrl = selectedIcon?.startsWith('http://') || selectedIcon?.startsWith('https://') || selectedIcon?.startsWith('/') || selectedIcon?.startsWith('data:');
+  const [customInput, setCustomInput] = useState<string>(isCustomUrl ? selectedIcon : '');
+
+  React.useEffect(() => {
+    if (isCustomUrl) {
+      setCustomInput(selectedIcon);
+    }
+  }, [selectedIcon, isCustomUrl]);
 
   if (!isOpen) return null;
 

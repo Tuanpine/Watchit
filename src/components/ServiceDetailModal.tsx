@@ -111,12 +111,29 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
 
   const handleRestart = async () => {
     if (!service.container_id) return;
+
+    const confirmed = window.confirm(
+      `CẢNH BÁO: Bạn có chắc chắn muốn khởi động lại container '${service.title || service.name}' (${service.container_id})?\n\nDịch vụ có thể bị gián đoạn kết nối tạm thời trong quá trình khởi động lại.`
+    );
+    if (!confirmed) return;
+
     try {
       setIsRestarting(true);
+      const headers: Record<string, string> = {};
+      const adminToken = localStorage.getItem('admin_token');
+      if (adminToken) {
+        headers['Authorization'] = `Bearer ${adminToken}`;
+      }
+
       const res = await fetch(`/api/docker/containers/${service.container_id}/restart`, {
-        method: 'POST'
+        method: 'POST',
+        headers
       });
       const data = await res.json();
+      if (!res.ok) {
+        setActionMessage(data.error || 'Khởi động lại thất bại');
+        return;
+      }
       setActionMessage(data.message || 'Container restart initiated');
       fetchStats();
       if (onCheckHealth) {
@@ -305,6 +322,24 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
             </div>
 
             {/* 4 Core Metrics Cards Grid */}
+            {loading && !stats ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {[1, 2, 3, 4].map((idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-[var(--bg-elevated)]/30 border border-[var(--border-subtle)] animate-pulse">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="h-4 w-20 bg-[var(--border-subtle)] rounded" />
+                      <div className="h-3 w-12 bg-[var(--border-subtle)] rounded" />
+                    </div>
+                    <div className="h-7 w-28 bg-[var(--border-subtle)] rounded mb-3" />
+                    <div className="h-1.5 w-full bg-[var(--border-subtle)] rounded-full" />
+                    <div className="flex justify-between mt-2">
+                      <div className="h-3 w-14 bg-[var(--border-subtle)] rounded" />
+                      <div className="h-3 w-14 bg-[var(--border-subtle)] rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {/* CPU Usage Card */}
               <div className="p-4 rounded-xl bg-[var(--bg-elevated)]/30 border border-[var(--border-subtle)] relative overflow-hidden">
@@ -419,6 +454,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
                 </div>
               </div>
             </div>
+            )}
           </div>
 
           {/* Section: 30-Day Uptime Reliability Bar (Uptime Kuma Style) */}

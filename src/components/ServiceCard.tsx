@@ -79,9 +79,11 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     }
   };
 
-  const status = health?.status || 'online';
+  const status = health?.status || 'unknown';
   const isOnline = status === 'online';
+  const isOffline = status === 'offline';
   const isChecking = status === 'checking';
+  const isUnknown = status === 'unknown';
 
   // Format URL display
   let cleanUrlDisplay = effectiveUrl.replace(/^https?:\/\//, '');
@@ -158,11 +160,13 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               className={`w-2 h-2 rounded-full ${
                 isOnline
                   ? 'bg-[var(--status-online)] shadow-[0_0_6px_var(--status-online)]'
-                  : 'bg-[var(--status-offline)]'
+                  : isOffline
+                  ? 'bg-[var(--status-offline)]'
+                  : 'bg-zinc-400 dark:bg-zinc-500'
               } ${isChecking ? 'animate-ping' : ''}`}
             />
             <span className="text-[11px] font-mono text-[var(--text-secondary)] capitalize">
-              {status}
+              {isUnknown ? 'untested' : status}
             </span>
             {health?.latencyMs && (
               <span className="text-[10px] font-mono text-[var(--text-muted)] hidden xs:inline">
@@ -252,12 +256,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               <span
                 className={`w-2 h-2 rounded-full ${
                   isOnline
-                    ? 'bg-[var(--status-online)]'
-                    : 'bg-[var(--status-offline)]'
+                    ? 'bg-[var(--status-online)] shadow-[0_0_6px_var(--status-online)]'
+                    : isOffline
+                    ? 'bg-[var(--status-offline)]'
+                    : 'bg-zinc-400 dark:bg-zinc-500'
                 } ${isChecking ? 'animate-ping' : ''}`}
               />
               <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-secondary)] font-medium">
-                {status}
+                {isUnknown ? 'untested' : status}
               </span>
               {health?.latencyMs && isOnline && (
                 <span className="text-[10px] font-mono text-[var(--text-muted)]">

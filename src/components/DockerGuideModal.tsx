@@ -23,29 +23,40 @@ export const DockerGuideModal: React.FC<DockerGuideModalProps> = ({
 
 services:
   service-portal:
-    image: ghcr.io/your-user/service-hub-portal:latest
+    # Build trực tiếp từ source repository hiện tại:
+    build: .
+    # Hoặc chỉ định prebuilt image:
+    # image: your-registry/watchit-portal:latest
     container_name: service-hub-portal
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
+      - NODE_ENV=production
       - ADMIN_PASSWORD=admin
-      - JWT_SECRET=replace_with_a_secure_random_key
+      - JWT_SECRET=service-hub-jwt-secret-key-32chars
       - DOCKER_SOCKET_PATH=/var/run/docker.sock
     volumes:
       # Data persistence for services & configurations
       - ./data:/app/data
-      # Mount host Docker socket in read-only mode for auto-discovery
+      # Mount host Docker socket:
+      # - :ro (Read-only) an toàn cho giám sát và khám phá container
+      # - :rw nếu cần quyền restart container từ web UI
       - /var/run/docker.sock:/var/run/docker.sock:ro
 `;
 
-  const dockerRunSnippet = `docker run -d \\
+  const dockerRunSnippet = `# 1. Build image cục bộ:
+docker build -t watchit-portal .
+
+# 2. Chạy container:
+docker run -d \\
   --name service-hub-portal \\
   -p 3000:3000 \\
   -v /var/run/docker.sock:/var/run/docker.sock:ro \\
   -v $(pwd)/data:/app/data \\
   -e ADMIN_PASSWORD=admin \\
-  ghcr.io/your-user/service-hub-portal:latest`;
+  -e JWT_SECRET=service-hub-jwt-secret-key-32chars \\
+  watchit-portal:latest`;
 
   const handleCopy = (text: string, type: 'compose' | 'cmd') => {
     navigator.clipboard.writeText(text);

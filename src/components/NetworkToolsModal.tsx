@@ -73,9 +73,25 @@ export const NetworkToolsModal: React.FC<NetworkToolsModalProps> = ({ isOpen, on
     }
   };
 
+  const isValidMac = (mac: string) => {
+    return /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/.test(mac.trim());
+  };
+
   const handleSendManualWol = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wolMac) return;
+
+    if (!isValidMac(wolMac)) {
+      setWolResult({
+        mac: wolMac,
+        broadcastIp: wolBroadcastIp,
+        port: wolPort,
+        success: false,
+        message: 'Định dạng địa chỉ MAC không hợp lệ. Vui lòng nhập đúng chuẩn XX:XX:XX:XX:XX:XX hoặc XX-XX-XX-XX-XX-XX.',
+        timestamp: new Date().toLocaleTimeString()
+      });
+      return;
+    }
 
     setIsSendingWol(true);
     setWolResult(null);
@@ -234,6 +250,11 @@ export const NetworkToolsModal: React.FC<NetworkToolsModalProps> = ({ isOpen, on
   const handleSaveDevice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingDevice?.name || !editingDevice?.ip || !editingDevice?.mac) return;
+
+    if (!isValidMac(editingDevice.mac)) {
+      alert('Định dạng địa chỉ MAC không hợp lệ!\nVui lòng nhập đúng chuẩn 6 cặp hexa ngăn cách bởi dấu hai chấm hoặc gạch ngang (ví dụ: 00:11:22:33:44:55 hoặc 00-11-22-33-44-55).');
+      return;
+    }
 
     try {
       const res = await fetch('/api/network/devices', {

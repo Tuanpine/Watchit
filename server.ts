@@ -528,6 +528,30 @@ function authenticateAdmin(req: AuthenticatedRequest, res: Response, next: NextF
   }
 }
 
+// Extract true client IP behind reverse proxies / Cloud Run / Nginx
+function getClientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim().length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || (req as any).ip || 'unknown-ip';
+}
+
+// Check if request is authenticated admin without throwing 401
+function checkIsAdmin(req: Request): boolean {
+  let token = (req as any).cookies?.auth_token;
+  if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+    token = req.headers.authorization.substring(7);
+  }
+  if (!token) return false;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { username: string; role: string };
+    return Boolean(decoded && decoded.role === 'admin');
+  } catch {
+    return false;
+  }
+}
+
 // Query Docker daemon over UNIX domain socket
 function queryDockerDaemon(endpoint: string, method: string = 'GET', body?: any): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -715,6 +739,7 @@ function getSimulatedDockerContainers(): any[] {
 
 async function startServer() {
   const app = express();
+  app.set('trust proxy', 1);
 
   // HTTP Security Headers (anti-MIME sniffing, anti-clickjacking, XSS protection)
   app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -734,7 +759,7 @@ async function startServer() {
 
   // POST /api/auth/login - Rate limited, bcrypt checked, JWT issued
   app.post('/api/auth/login', async (req: Request, res: Response) => {
-    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown-ip';
+    const clientIp = getClientIp(req);
     const rateStatus = checkRateLimit(clientIp);
 
     if (!rateStatus.allowed) {
@@ -1320,21 +1345,56 @@ async function startServer() {
     const { services, mode } = req.body;
 
     if (!Array.isArray(services)) {
-      res.status(400).json({ error: 'Valid services array required' });
+      res.status(400).json({ error: 'Dữ liệu không hợp lệ: Yêu cầu mảng services trong file sao lưu.' });
       return;
     }
 
+    const validatedServices: any[] = [];
+    for (let i = 0; i < services.length; i++) {
+      const item = services[i];
+      if (!item || typeof item !== 'object') {
+        res.status(400).json({ error: `Phần tử dịch vụ thứ ${i + 1} không hợp lệ (không phải đối tượng JSON).` });
+        return;
+      }
+      if (!item.name || typeof item.name !== 'string' || !item.url || typeof item.url !== 'string') {
+        res.status(400).json({ error: `Dịch vụ '${item.name || `ở vị trí ${i + 1}`}' thiếu trường bắt buộc (name, url).` });
+        return;
+      }
+
+      const sanitized = {
+        id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : `srv-${Date.now()}-${i}`,
+        name: String(item.name).trim(),
+        title: item.title ? String(item.title).trim() : String(item.name).trim(),
+        description: item.description ? String(item.description).trim() : '',
+        icon: item.icon ? String(item.icon).trim() : 'Boxes',
+        url: String(item.url).trim(),
+        port: Number(item.port) || 80,
+        category: item.category ? String(item.category).trim() : 'General',
+        source: item.source === 'docker' ? 'docker' : 'manual',
+        container_id: item.container_id ? String(item.container_id).trim() : undefined,
+        is_visible: item.is_visible !== false,
+        display_order: Number(item.display_order) || i + 1,
+        health_check_url: item.health_check_url ? String(item.health_check_url).trim() : undefined,
+        created_at: item.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      validatedServices.push(sanitized);
+    }
+
     if (mode === 'replace') {
-      saveServices(services);
+      saveServices(validatedServices);
     } else {
-      // Merge
+      // Merge mode
       const existing = getServices();
       const existingIds = new Set(existing.map((s) => s.id));
-      const newItems = services.filter((s) => !existingIds.has(s.id));
+      let maxOrder = Math.max(0, ...existing.map((s) => s.display_order ?? 0));
+      const newItems = validatedServices
+        .filter((s) => !existingIds.has(s.id))
+        .map((s) => ({ ...s, display_order: ++maxOrder }));
       saveServices([...existing, ...newItems]);
     }
 
-    res.json({ message: 'Services imported successfully', count: services.length });
+    res.json({ message: 'Nhập dữ liệu dịch vụ thành công!', count: validatedServices.length });
   });
 
   // PUT /api/admin/portal-config - Update portal title/subtitle
@@ -1400,6 +1460,17 @@ async function startServer() {
     const { id } = req.params;
     const services = getServices();
     const service = services.find((s) => s.id === id);
+
+    if (!service) {
+      res.status(404).json({ error: 'Không tìm thấy thông tin dịch vụ.' });
+      return;
+    }
+
+    // Protect hidden service telemetry from public unauthenticated callers
+    if (service.is_visible === false && !checkIsAdmin(req)) {
+      res.status(404).json({ error: 'Không tìm thấy thông tin dịch vụ hoặc dịch vụ đang bị ẩn.' });
+      return;
+    }
 
     const { history30d, uptimePercent30d } = generateUptimeHistory(id);
     const socketExists = fs.existsSync(DOCKER_SOCKET_PATH);
@@ -1576,7 +1647,12 @@ async function startServer() {
         res.json({ success: true, message: `Container ${id} restarted successfully via Docker Engine.` });
         return;
       } catch (err: any) {
-        res.status(500).json({ error: `Failed to restart container: ${err.message}` });
+        const errMsg = String(err?.message || '');
+        const isRo = errMsg.includes('read-only') || errMsg.includes('read only') || errMsg.includes('permission denied') || errMsg.includes('EACCES') || errMsg.includes('403');
+        const advice = isRo
+          ? ' (Gợi ý: Docker socket đang được mount với cờ :ro (read-only). Để cho phép restart từ giao diện, vui lòng đổi mount sang :rw trong docker-compose.yml).'
+          : '';
+        res.status(500).json({ error: `Không thể restart container: ${errMsg}${advice}` });
         return;
       }
     }
@@ -1584,7 +1660,7 @@ async function startServer() {
     // Simulated restart response for demo mode
     res.json({
       success: true,
-      message: `Container ${id} restart command acknowledged (Simulated Mode - Socket Unmounted).`
+      message: `Container ${id} restart command acknowledged (Chế độ mô phỏng - Socket chưa mount).`
     });
   });
 
@@ -1593,7 +1669,7 @@ async function startServer() {
   // ------------------------------------------------------------
 
   // POST /api/webhooks/refresh - Inbound trigger for GitHub Actions / Watchtower / Portainer
-  app.post('/api/webhooks/refresh', (req: Request, res: Response) => {
+  app.post('/api/webhooks/refresh', async (req: Request, res: Response) => {
     const tokenQuery = req.query.token as string;
     const tokenHeader = req.headers['x-webhook-token'] as string;
     const authHeader = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : '';
@@ -1610,10 +1686,62 @@ async function startServer() {
     settings.lastWebhookTriggered = new Date().toISOString();
     saveSettings(settings);
 
+    const services = getServices();
+    const socketExists = fs.existsSync(DOCKER_SOCKET_PATH);
+    let autoDiscoveredCount = 0;
+
+    if (socketExists) {
+      try {
+        const rawContainers: any[] = await queryDockerDaemon('/containers/json?all=1');
+        if (Array.isArray(rawContainers)) {
+          const existingIds = new Set(services.map((s) => s.container_id).filter(Boolean));
+          let maxOrder = Math.max(0, ...services.map((s) => s.display_order ?? 0));
+
+          for (const c of rawContainers) {
+            const labels = c.Labels || {};
+            const isEnabled = labels['watchit.enable'] === 'true' || labels['servicehub.enable'] === 'true';
+            if (isEnabled && !existingIds.has(c.Id)) {
+              const rawName = c.Names?.[0] ? c.Names[0].replace(/^\//, '') : c.Id.substring(0, 12);
+              const customName = labels['watchit.name'] || labels['servicehub.name'] || rawName;
+              const customCategory = labels['watchit.category'] || labels['servicehub.category'] || 'DevOps';
+              const customIcon = labels['watchit.icon'] || labels['servicehub.icon'] || 'Boxes';
+              const customUrl = labels['watchit.url'] || labels['servicehub.url'] || `http://localhost:${c.Ports?.[0]?.PublicPort || 80}`;
+
+              services.push({
+                id: 'srv-' + crypto.randomBytes(6).toString('hex'),
+                name: customName,
+                title: customName,
+                description: `Auto-discovered via WatchIt Webhook trigger (${rawName})`,
+                icon: customIcon,
+                url: customUrl,
+                port: c.Ports?.[0]?.PublicPort || 80,
+                category: customCategory,
+                source: 'docker',
+                container_id: c.Id,
+                is_visible: true,
+                display_order: ++maxOrder,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+              autoDiscoveredCount++;
+            }
+          }
+          if (autoDiscoveredCount > 0) {
+            saveServices(services);
+          }
+        }
+      } catch (err) {
+        console.error('Webhook docker rescan error:', err);
+      }
+    }
+
     res.json({
       success: true,
-      message: 'Service Hub refresh triggered successfully by webhook.',
-      timestamp: settings.lastWebhookTriggered
+      message: 'WatchIt refresh triggered successfully. Rescanned containers and updated services fleet.',
+      timestamp: settings.lastWebhookTriggered,
+      servicesCount: services.length,
+      autoDiscoveredServices: autoDiscoveredCount,
+      dockerSocketConnected: socketExists
     });
   });
 
@@ -1812,7 +1940,7 @@ async function startServer() {
 
   // POST /api/network/wol - Broadcast Wake-on-LAN Magic Packet (Rate Limited)
   app.post('/api/network/wol', async (req: Request, res: Response) => {
-    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown-ip';
+    const clientIp = getClientIp(req);
     const rateStatus = checkNetworkToolLimit(clientIp, 'wol');
     if (!rateStatus.allowed) {
       res.status(429).json({
@@ -1824,8 +1952,14 @@ async function startServer() {
 
     const { mac, broadcastIp = '255.255.255.255', port = 9 } = req.body;
 
-    if (!mac) {
+    if (!mac || typeof mac !== 'string') {
       res.status(400).json({ error: 'Địa chỉ MAC là bắt buộc (ví dụ: AA:BB:CC:DD:EE:FF)' });
+      return;
+    }
+
+    const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+    if (!macRegex.test(mac.trim())) {
+      res.status(400).json({ error: 'Định dạng địa chỉ MAC không hợp lệ. Chuẩn: XX:XX:XX:XX:XX:XX hoặc XX-XX-XX-XX-XX-XX' });
       return;
     }
 
@@ -1861,7 +1995,7 @@ async function startServer() {
 
   // POST /api/network/tcp-ping - Ping host on specific TCP port (Rate Limited & SSRF Guarded)
   app.post('/api/network/tcp-ping', async (req: Request, res: Response) => {
-    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown-ip';
+    const clientIp = getClientIp(req);
     const rateStatus = checkNetworkToolLimit(clientIp, 'ping');
     if (!rateStatus.allowed) {
       res.status(429).json({
@@ -1906,6 +2040,12 @@ async function startServer() {
 
     if (!name || !ip || !mac) {
       res.status(400).json({ error: 'Tên thiết bị, IP và địa chỉ MAC là bắt buộc' });
+      return;
+    }
+
+    const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+    if (!macRegex.test(String(mac).trim())) {
+      res.status(400).json({ error: 'Định dạng địa chỉ MAC không hợp lệ. Chuẩn: XX:XX:XX:XX:XX:XX hoặc XX-XX-XX-XX-XX-XX' });
       return;
     }
 
