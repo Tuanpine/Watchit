@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌐 Service Hub & Homelab Project Portal
+# 🌐 WatchIt - Service Hub & Homelab Project Portal
 
 **Cổng quản lý dịch vụ tự lưu trữ (Self-Hosted), giám sát container Docker thời gian thực và trung tâm điều khiển hạ tầng mạng Homelab.**
 
