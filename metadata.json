@@ -1,0 +1,6 @@
+{
+  "name": "Service Hub & Project Portal",
+  "description": "Self-hosted service hub and project dashboard aggregating Docker containers, local services, and remote projects with public flashcards, health checks, and admin controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
