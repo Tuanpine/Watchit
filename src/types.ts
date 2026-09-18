@@ -159,3 +159,22 @@ export interface WeatherInfo {
   unit: 'C' | 'F';
   lastUpdated: string;
 }
+
+export interface SecurityCheckItem {
+  id: string;
+  name: string;
+  status: 'pass' | 'warning' | 'danger';
+  title: string;
+  description: string;
+  recommendation?: string;
+}
+
+export interface SecurityAuditReport {
+  score: 'A' | 'B' | 'C' | 'D';
+  overallStatus: 'secure' | 'warning' | 'critical';
+  checks: SecurityCheckItem[];
+  warningsCount: number;
+  criticalCount: number;
+  summary: string;
+  auditTimestamp: string;
+}

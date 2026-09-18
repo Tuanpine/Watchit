@@ -205,10 +205,26 @@ export const NetworkToolsModal: React.FC<NetworkToolsModalProps> = ({ isOpen, on
     }
   };
 
+  const getAuthHeaders = () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const adminToken = localStorage.getItem('admin_token');
+    if (adminToken) {
+      headers['Authorization'] = `Bearer ${adminToken}`;
+    }
+    return headers;
+  };
+
   const handleDeleteDevice = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa thiết bị này khỏi danh sách quản lý?')) return;
     try {
-      await fetch(`/api/network/devices/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/network/devices/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.status === 401) {
+        alert('Yêu cầu quyền Quản trị viên (Admin) để xóa thiết bị. Vui lòng đăng nhập vào trang Quản trị trước.');
+        return;
+      }
       fetchDevices();
     } catch (e) {
       console.error('Failed to delete device:', e);
@@ -222,9 +238,13 @@ export const NetworkToolsModal: React.FC<NetworkToolsModalProps> = ({ isOpen, on
     try {
       const res = await fetch('/api/network/devices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(editingDevice)
       });
+      if (res.status === 401) {
+        alert('Yêu cầu quyền Quản trị viên (Admin) để thêm hoặc chỉnh sửa thiết bị mạng. Vui lòng đăng nhập vào trang Quản trị trước.');
+        return;
+      }
       if (res.ok) {
         setIsDeviceFormOpen(false);
         setEditingDevice(null);

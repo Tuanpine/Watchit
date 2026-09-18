@@ -14,6 +14,7 @@ import {
   RefreshCw,
   ExternalLink,
   Shield,
+  ShieldCheck,
   Key,
   Sliders,
   CheckCircle2,
@@ -28,12 +29,13 @@ import {
   RotateCcw,
   Send
 } from 'lucide-react';
-import { Service, DockerContainer, DockerStatusResponse, UserSession, WebhookInfo } from '../types';
+import { Service, DockerContainer, DockerStatusResponse, UserSession, WebhookInfo, SecurityAuditReport } from '../types';
 import { IconRenderer } from './IconRenderer';
 import { ServiceModal } from './ServiceModal';
 import { DockerGuideModal } from './DockerGuideModal';
 import { ServiceDetailModal } from './ServiceDetailModal';
 import { NetworkToolsModal } from './NetworkToolsModal';
+import { SecurityAuditView } from './SecurityAuditView';
 
 interface AdminDashboardProps {
   user: UserSession;
@@ -54,7 +56,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   portalSubtitle,
   onUpdatePortalConfig
 }) => {
-  const [activeTab, setActiveTab] = useState<'services' | 'docker' | 'settings'>('services');
+  const [activeTab, setActiveTab] = useState<'services' | 'docker' | 'security' | 'settings'>('services');
   const [services, setServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [search, setSearch] = useState('');
@@ -64,6 +66,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isDockerGuideOpen, setIsDockerGuideOpen] = useState(false);
+
+  // Security Audit state
+  const [securityReport, setSecurityReport] = useState<SecurityAuditReport | null>(null);
+  const [isLoadingSecurity, setIsLoadingSecurity] = useState(false);
 
   // Docker Discovery state
   const [dockerStatus, setDockerStatus] = useState<DockerStatusResponse | null>(null);
@@ -207,10 +213,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  // Fetch Security Audit report
+  const fetchSecurityAudit = async () => {
+    setIsLoadingSecurity(true);
+    try {
+      const res = await fetch('/api/admin/security-audit', {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSecurityReport(data);
+      }
+    } catch (e) {
+      console.error('Failed to load security audit:', e);
+    } finally {
+      setIsLoadingSecurity(false);
+    }
+  };
+
   useEffect(() => {
     fetchServices();
     fetchDockerData();
     fetchWebhookInfo();
+    fetchSecurityAudit();
   }, []);
 
   const showBanner = (type: 'success' | 'error', text: string) => {
@@ -524,6 +549,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {containers.length > 0 && (
               <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/20 text-white">
                 {containers.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('security');
+              fetchSecurityAudit();
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              activeTab === 'security'
+                ? 'bg-[var(--accent)] text-white shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <ShieldCheck size={14} />
+            <span>Security Audit</span>
+            {securityReport?.criticalCount ? (
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-rose-500 text-white animate-pulse">
+                {securityReport.criticalCount}
+              </span>
+            ) : securityReport?.warningsCount ? (
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500 text-black font-semibold">
+                {securityReport.warningsCount}
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/30 text-emerald-300">
+                A
               </span>
             )}
           </button>
@@ -1224,6 +1277,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* TAB 4: SYSTEM SECURITY AUDIT & HARDENING */}
+      {activeTab === 'security' && (
+        <SecurityAuditView
+          report={securityReport}
+          isLoading={isLoadingSecurity}
+          onRefresh={fetchSecurityAudit}
+          onNavigateToSettings={() => setActiveTab('settings')}
+        />
       )}
 
       {/* Service Create/Edit Modal */}

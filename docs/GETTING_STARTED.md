@@ -2,6 +2,11 @@
 
 Tài liệu này hướng dẫn chi tiết từng bước từ số 0 để bạn có thể tự cài đặt, vận hành và cấu hình **Service Hub & Homelab Project Portal** trên hệ thống của mình (máy chủ cá nhân, Raspberry Pi, Mini PC hoặc VPS đám mây).
 
+> ⚠️ **CẢNH BÁO AN NINH QUAN TRỌNG:**
+> * **KHÔNG sử dụng mật khẩu mặc định** khi triển khai công khai.
+> * **Mount Docker Socket ở chế độ chỉ đọc (`:ro`)**: Đảm bảo không bỏ cờ `:ro` để tránh rủi ro bảo mật cho máy chủ.
+> * **Xem tài liệu an ninh chi tiết**: [Chính sách Bảo mật (SECURITY.md)](../SECURITY.md) và [Hướng dẫn Thắt chặt An ninh (docs/SECURITY_HARDENING.md)](SECURITY_HARDENING.md).
+
 ---
 
 ## 📑 Mục lục
@@ -10,7 +15,8 @@ Tài liệu này hướng dẫn chi tiết từng bước từ số 0 để bạ
 3. [Triển khai Service Hub](#3-triển-khai-service-hub)
 4. [Đăng nhập và Cấu hình lần đầu](#4-đăng-nhập-và-cấu-hình-lần-đầu)
 5. [Cấu hình Reverse Proxy & Tên miền (Domain / SSL)](#5-cấu-hình-reverse-proxy--tên-miền-domain--ssl)
-6. [Các lỗi thường gặp và cách xử lý](#6-các-lỗi-thường-gặp-và-cách-xử-lý)
+6. [Kiểm toán An ninh Tự động (Security Audit)](#6-kiểm-toán-an-ninh-tự-động-security-audit)
+7. [Các lỗi thường gặp và cách xử lý](#7-các-lỗi-thường-gặp-và-cách-xử-lý)
 
 ---
 
@@ -147,7 +153,23 @@ Nếu bạn đã cài đặt Nginx Proxy Manager:
 
 ---
 
-## 6. Các lỗi thường gặp và cách xử lý
+## 6. Kiểm toán An ninh Tự động (Security Audit)
+
+Service Hub tích hợp sẵn công cụ tự đánh giá an ninh ngay trên Admin Panel:
+1. Đăng nhập vào trang Quản trị > Nhấp vào tab **"Security Audit"**.
+2. Hệ thống sẽ chấm điểm xếp hạng bảo mật của máy chủ theo thang điểm **Grade A / B / C**:
+   - Kiểm tra mật khẩu quản trị mặc định (phát hiện và cảnh báo đỏ ngay nếu còn dùng `admin`/`admin123...`).
+   - Kiểm tra chuỗi ký tự bí mật `JWT_SECRET`.
+   - Kiểm tra chế độ gắn kết Docker Socket (`/var/run/docker.sock`).
+   - Kiểm tra trạng thái tường lửa chống tấn công dò mật khẩu (Anti-Brute Force Lockout).
+   - Kiểm tra các Header bảo vệ trình duyệt (X-Frame-Options, nosniff, XSS-Protection).
+3. Làm theo các khuyến nghị hiển thị trực quan trên màn hình để đạt mức xếp hạng an toàn **Grade A** trước khi chia sẻ link portal.
+
+> 📖 **Xem hướng dẫn thắt chặt an ninh chuyên sâu:** [docs/SECURITY_HARDENING.md](SECURITY_HARDENING.md)
+
+---
+
+## 7. Các lỗi thường gặp và cách xử lý
 
 ### Lỗi 1: Không kết nối được Docker Socket (Docker Discovery báo lỗi "Socket not available")
 - **Nguyên nhân**: Quyền truy cập file `/var/run/docker.sock` trên máy host bị hạn chế.

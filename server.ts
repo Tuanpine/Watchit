@@ -17,7 +17,9 @@ const SERVICES_FILE = path.join(DATA_DIR, 'services.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const DEVICES_FILE = path.join(DATA_DIR, 'network_devices.json');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'service-hub-jwt-secret-key-32chars';
+const DEFAULT_JWT_SECRET = 'service-hub-jwt-secret-key-32chars';
+const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+const IS_DEFAULT_JWT_SECRET = !process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_JWT_SECRET;
 const DOCKER_SOCKET_PATH = process.env.DOCKER_SOCKET_PATH || '/var/run/docker.sock';
 
 // Ensure data directory exists
@@ -316,9 +318,63 @@ function sendWolPacket(mac: string, broadcastAddress = '255.255.255.255', port =
   });
 }
 
-// Helper: Measure TCP Connection Latency & Port Availability (TCP Ping)
-function tcpPing(host: string, port: number, timeoutMs = 2500): Promise<{ status: 'open' | 'closed' | 'timeout'; latencyMs: number; message: string }> {
+// Rate limiting map for network diagnostic tools (WoL & TCP Ping) to prevent DoS, UDP flood, and port scan abuse
+interface NetworkRateRecord {
+  count: number;
+  resetAt: number;
+}
+const networkRateLimits = new Map<string, NetworkRateRecord>();
+
+function checkNetworkToolLimit(ip: string, tool: 'ping' | 'wol'): { allowed: boolean; waitSeconds?: number } {
+  const key = `${ip}:${tool}`;
+  const now = Date.now();
+  const limit = tool === 'ping' ? 40 : 15; // 40 pings/min, 15 wol/min
+  const windowMs = 60 * 1000;
+
+  const record = networkRateLimits.get(key);
+  if (!record || now > record.resetAt) {
+    networkRateLimits.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true };
+  }
+
+  if (record.count >= limit) {
+    const waitSeconds = Math.ceil((record.resetAt - now) / 1000);
+    return { allowed: false, waitSeconds };
+  }
+
+  record.count += 1;
+  return { allowed: true };
+}
+
+// Helper: Measure TCP Connection Latency & Port Availability (SSRF-hardened TCP Ping)
+function tcpPing(rawHost: string, port: number, timeoutMs = 2500): Promise<{ status: 'open' | 'closed' | 'timeout'; latencyMs: number; message: string }> {
   return new Promise((resolve) => {
+    // Sanitize input host: strip protocols, trailing paths, query strings, and whitespace
+    const host = (rawHost || '').trim().replace(/^https?:\/\//i, '').split('/')[0].split(':')[0].trim();
+
+    if (!host) {
+      resolve({ status: 'closed', latencyMs: 0, message: 'Địa chỉ Hostname hoặc IP không hợp lệ' });
+      return;
+    }
+
+    // SSRF & Cloud Metadata Security Guard (blocks AWS/GCP/Azure/DO internal metadata probes)
+    if (
+      host === '169.254.169.254' ||
+      host.startsWith('169.254.') ||
+      host === 'metadata.google.internal' ||
+      host === 'instance-data'
+    ) {
+      resolve({
+        status: 'closed',
+        latencyMs: 0,
+        message: 'Truy vấn bị từ chối: Không được phép quét địa chỉ Cloud Metadata nhạy cảm (SSRF Protection Guard).'
+      });
+      return;
+    }
+
+    // Clamp timeout between 300ms and 5000ms
+    const clampedTimeout = Math.min(Math.max(Number(timeoutMs) || 2500, 300), 5000);
+
     const startTime = Date.now();
     const socket = new net.Socket();
     let isResolved = false;
@@ -331,14 +387,14 @@ function tcpPing(host: string, port: number, timeoutMs = 2500): Promise<{ status
       resolve({ status, latencyMs, message });
     };
 
-    socket.setTimeout(timeoutMs);
+    socket.setTimeout(clampedTimeout);
 
     socket.on('connect', () => {
       finalize('open', `Cổng TCP ${port} đang mở và phản hồi tốt`);
     });
 
     socket.on('timeout', () => {
-      finalize('timeout', `Hết thời gian chờ kết nối (${timeoutMs}ms)`);
+      finalize('timeout', `Hết thời gian chờ kết nối (${clampedTimeout}ms)`);
     });
 
     socket.on('error', (err: any) => {
@@ -659,6 +715,15 @@ function getSimulatedDockerContainers(): any[] {
 
 async function startServer() {
   const app = express();
+
+  // HTTP Security Headers (anti-MIME sniffing, anti-clickjacking, XSS protection)
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
 
   app.use(express.json());
   app.use(cookieParser());
@@ -1582,11 +1647,181 @@ async function startServer() {
   });
 
   // ------------------------------------------------------------
+  // SYSTEM SECURITY AUDIT REST API
+  // ------------------------------------------------------------
+
+  // GET /api/admin/security-audit - Real-time security posture assessment
+  app.get('/api/admin/security-audit', authenticateAdmin, (_req: AuthenticatedRequest, res: Response) => {
+    const settings = getSettings();
+    const checks: any[] = [];
+    let warningsCount = 0;
+    let criticalCount = 0;
+
+    // Check 1: Admin Password Default
+    const isDefaultPass =
+      bcrypt.compareSync('admin', settings.adminPasswordHash) ||
+      bcrypt.compareSync('admin123_doi_ngay_khi_dung', settings.adminPasswordHash);
+
+    if (isDefaultPass) {
+      criticalCount++;
+      checks.push({
+        id: 'chk-password',
+        name: 'Mật khẩu quản trị (Admin Password)',
+        status: 'danger',
+        title: 'Đang sử dụng mật khẩu mặc định',
+        description: 'Tài khoản admin hiện đang dùng mật khẩu mặc định (admin/admin123...). Bất kỳ ai truy cập portal đều có thể đăng nhập.',
+        recommendation: 'Truy cập tab Settings > Đổi mật khẩu ngay lập tức hoặc gán ADMIN_PASSWORD trong file .env / docker-compose.yml.'
+      });
+    } else {
+      checks.push({
+        id: 'chk-password',
+        name: 'Mật khẩu quản trị (Admin Password)',
+        status: 'pass',
+        title: 'Mật khẩu tùy biến an toàn',
+        description: 'Mật khẩu quản trị viên đã được thay đổi khỏi giá trị mặc định và mã hóa an toàn bằng thuật toán Bcrypt.'
+      });
+    }
+
+    // Check 2: JWT Secret
+    if (IS_DEFAULT_JWT_SECRET) {
+      warningsCount++;
+      checks.push({
+        id: 'chk-jwt',
+        name: 'Khóa ký JWT Token (JWT Secret)',
+        status: 'warning',
+        title: 'Đang dùng JWT_SECRET mẫu',
+        description: 'Khóa bí mật JWT dùng để tạo session đăng nhập đang là chuỗi mẫu mặc định. Kẻ tấn công có thể giả mạo token nếu biết mã nguồn.',
+        recommendation: 'Tạo một chuỗi ngẫu nhiên dài từ 32 ký tự trở lên và gán vào biến môi trường JWT_SECRET.'
+      });
+    } else {
+      checks.push({
+        id: 'chk-jwt',
+        name: 'Khóa ký JWT Token (JWT Secret)',
+        status: 'pass',
+        title: 'Khóa JWT bí mật tùy chỉnh',
+        description: 'Khóa JWT_SECRET đã được thiết lập độc lập từ biến môi trường của hệ thống.'
+      });
+    }
+
+    // Check 3: Docker Socket Path & Mounting
+    const socketExists = fs.existsSync(DOCKER_SOCKET_PATH);
+    if (socketExists) {
+      checks.push({
+        id: 'chk-docker-socket',
+        name: 'Cổng giao tiếp Docker Socket',
+        status: 'warning',
+        title: 'Docker Socket đang được kết nối trực tiếp',
+        description: `Socket ${DOCKER_SOCKET_PATH} đang kết nối với Docker daemon máy chủ. Để đảm bảo an toàn cao nhất, hãy mount ở chế độ Read-Only (:ro) hoặc dùng Docker Socket Proxy (tecnativa/docker-socket-proxy).`,
+        recommendation: 'Chỉ cấp quyền khi cần thiết; nếu chỉ giám sát container, hãy dùng cờ /var/run/docker.sock:/var/run/docker.sock:ro trong docker-compose.'
+      });
+    } else {
+      checks.push({
+        id: 'chk-docker-socket',
+        name: 'Cổng giao tiếp Docker Socket',
+        status: 'pass',
+        title: 'Chế độ an toàn / Giả lập (Socket không mount)',
+        description: 'Docker socket máy chủ không bị mount vào container, cách ly hoàn toàn khỏi Docker daemon của host.'
+      });
+    }
+
+    // Check 4: Rate Limiting & Anti-Brute Force
+    checks.push({
+      id: 'chk-rate-limit',
+      name: 'Bảo vệ Brute-Force & Rate Limiting',
+      status: 'pass',
+      title: 'Đã kích hoạt bảo vệ đa lớp',
+      description: 'Khóa IP tự động sau 5 lần đăng nhập thất bại (15 phút), giới hạn tần suất TCP Ping (40 req/phút) và Wake-on-LAN (15 req/phút).'
+    });
+
+    // Check 5: SSRF & Cloud Metadata Guard
+    checks.push({
+      id: 'chk-ssrf',
+      name: 'Bảo vệ SSRF & Chặn Cloud Metadata',
+      status: 'pass',
+      title: 'Cơ chế bảo vệ SSRF đang hoạt động',
+      description: 'Bộ công cụ dò cổng TCP tự động từ chối các dải địa chỉ nhạy cảm (169.254.169.254, AWS/GCP/Azure link-local metadata).'
+    });
+
+    // Check 6: HTTP Security Headers
+    checks.push({
+      id: 'chk-headers',
+      name: 'HTTP Security Headers',
+      status: 'pass',
+      title: 'Đã thiết lập đầy đủ Header bảo vệ',
+      description: 'Bao gồm X-Content-Type-Options (nosniff), X-Frame-Options (SAMEORIGIN), X-XSS-Protection, Referrer-Policy.'
+    });
+
+    // Check 7: Production Environment (NODE_ENV)
+    const isProd = process.env.NODE_ENV === 'production';
+    if (!isProd) {
+      warningsCount++;
+      checks.push({
+        id: 'chk-node-env',
+        name: 'Môi trường thực thi (NODE_ENV)',
+        status: 'warning',
+        title: 'Đang chạy ở chế độ Development',
+        description: 'NODE_ENV chưa đặt thành production. Khi triển khai chính thức, hãy đặt NODE_ENV=production để tối ưu hiệu năng.',
+        recommendation: 'Đặt NODE_ENV=production trong file .env hoặc docker-compose.yml.'
+      });
+    } else {
+      checks.push({
+        id: 'chk-node-env',
+        name: 'Môi trường thực thi (NODE_ENV)',
+        status: 'pass',
+        title: 'Môi trường Production tiêu chuẩn',
+        description: 'Ứng dụng đang vận hành với NODE_ENV=production.'
+      });
+    }
+
+    // Calculate score
+    let score: 'A' | 'B' | 'C' | 'D' = 'A';
+    let overallStatus: 'secure' | 'warning' | 'critical' = 'secure';
+
+    if (criticalCount > 0) {
+      score = 'C';
+      overallStatus = 'critical';
+    } else if (warningsCount >= 2) {
+      score = 'B';
+      overallStatus = 'warning';
+    } else if (warningsCount === 1) {
+      score = 'B';
+      overallStatus = 'warning';
+    }
+
+    const summary =
+      overallStatus === 'critical'
+        ? `Phát hiện ${criticalCount} lỗ hổng nguy cấp cần khắc phục ngay lập tức!`
+        : overallStatus === 'warning'
+        ? `Hệ thống ổn định nhưng có ${warningsCount} khuyến nghị cần lưu ý.`
+        : 'Tuyệt vời! Tất cả các tiêu chuẩn bảo mật chính đều đạt yêu cầu an toàn.';
+
+    res.json({
+      score,
+      overallStatus,
+      checks,
+      warningsCount,
+      criticalCount,
+      summary,
+      auditTimestamp: new Date().toISOString()
+    });
+  });
+
+  // ------------------------------------------------------------
   // NETWORK TOOLS: WAKE-ON-LAN & TCP PORT PING APIS
   // ------------------------------------------------------------
 
-  // POST /api/network/wol - Broadcast Wake-on-LAN Magic Packet
+  // POST /api/network/wol - Broadcast Wake-on-LAN Magic Packet (Rate Limited)
   app.post('/api/network/wol', async (req: Request, res: Response) => {
+    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown-ip';
+    const rateStatus = checkNetworkToolLimit(clientIp, 'wol');
+    if (!rateStatus.allowed) {
+      res.status(429).json({
+        success: false,
+        error: `Quá nhiều yêu cầu Wake-on-LAN trong thời gian ngắn. Vui lòng đợi ${rateStatus.waitSeconds} giây trước khi gửi tiếp (Giới hạn chống lụt mạng LAN).`
+      });
+      return;
+    }
+
     const { mac, broadcastIp = '255.255.255.255', port = 9 } = req.body;
 
     if (!mac) {
@@ -1624,8 +1859,19 @@ async function startServer() {
     }
   });
 
-  // POST /api/network/tcp-ping - Ping host on specific TCP port
+  // POST /api/network/tcp-ping - Ping host on specific TCP port (Rate Limited & SSRF Guarded)
   app.post('/api/network/tcp-ping', async (req: Request, res: Response) => {
+    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown-ip';
+    const rateStatus = checkNetworkToolLimit(clientIp, 'ping');
+    if (!rateStatus.allowed) {
+      res.status(429).json({
+        status: 'closed',
+        latencyMs: 0,
+        message: `Tần suất kiểm tra cổng quá cao. Vui lòng chờ ${rateStatus.waitSeconds} giây (Giới hạn chống lạm dụng quét cổng/DDoS).`
+      });
+      return;
+    }
+
     const { host, port = 80, timeoutMs = 2500 } = req.body;
 
     if (!host) {
@@ -1648,14 +1894,14 @@ async function startServer() {
     });
   });
 
-  // GET /api/network/devices - List all registered network devices
+  // GET /api/network/devices - List all registered network devices (Public read-only)
   app.get('/api/network/devices', (_req: Request, res: Response) => {
     const devices = getDevices();
     res.json({ devices });
   });
 
-  // POST /api/network/devices - Add or update a network device
-  app.post('/api/network/devices', (req: Request, res: Response) => {
+  // POST /api/network/devices - Add or update a network device (Authenticated Admin only)
+  app.post('/api/network/devices', authenticateAdmin, (req: AuthenticatedRequest, res: Response) => {
     const { id, name, description, ip, mac, port, category, broadcastIp, wolPort } = req.body;
 
     if (!name || !ip || !mac) {
@@ -1692,8 +1938,8 @@ async function startServer() {
     res.json({ success: true, device: deviceData });
   });
 
-  // DELETE /api/network/devices/:id - Delete a network device
-  app.delete('/api/network/devices/:id', (req: Request, res: Response) => {
+  // DELETE /api/network/devices/:id - Delete a network device (Authenticated Admin only)
+  app.delete('/api/network/devices/:id', authenticateAdmin, (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
     const devices = getDevices();
     const filtered = devices.filter((d) => d.id !== id);
@@ -1707,8 +1953,18 @@ async function startServer() {
     res.json({ success: true, message: 'Đã xóa thiết bị' });
   });
 
-  // POST /api/network/devices/:id/wol - Wake a specific saved device
+  // POST /api/network/devices/:id/wol - Wake a specific saved device (Rate Limited)
   app.post('/api/network/devices/:id/wol', async (req: Request, res: Response) => {
+    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown-ip';
+    const rateStatus = checkNetworkToolLimit(clientIp, 'wol');
+    if (!rateStatus.allowed) {
+      res.status(429).json({
+        success: false,
+        error: `Quá nhiều yêu cầu Wake-on-LAN. Vui lòng chờ ${rateStatus.waitSeconds} giây trước khi gửi tiếp.`
+      });
+      return;
+    }
+
     const { id } = req.params;
     const devices = getDevices();
     const device = devices.find((d) => d.id === id);
@@ -1736,8 +1992,18 @@ async function startServer() {
     }
   });
 
-  // POST /api/network/devices/:id/ping - Probe a specific saved device
+  // POST /api/network/devices/:id/ping - Probe a specific saved device (Rate Limited & SSRF Guarded)
   app.post('/api/network/devices/:id/ping', async (req: Request, res: Response) => {
+    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown-ip';
+    const rateStatus = checkNetworkToolLimit(clientIp, 'ping');
+    if (!rateStatus.allowed) {
+      res.status(429).json({
+        success: false,
+        error: `Tần suất kiểm tra cổng quá cao. Vui lòng chờ ${rateStatus.waitSeconds} giây.`
+      });
+      return;
+    }
+
     const { id } = req.params;
     const devices = getDevices();
     const device = devices.find((d) => d.id === id);

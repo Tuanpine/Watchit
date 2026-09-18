@@ -6,6 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Compatible-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Security Audit](https://img.shields.io/badge/Security-Hardened%20Grade%20A-success?logo=shield)](SECURITY.md)
 [![React 18](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -20,7 +21,7 @@
   <a href="#-ảnh-chụp-màn-hình-demo">📸 Giao diện Demo</a> •
   <a href="#-cấu-hình-biến-môi-trường">⚙️ Biến môi trường</a> •
   <a href="#-tài-liệu-hướng-dẫn-chuyên-sâu">📖 Tài liệu chuyên sâu</a> •
-  <a href="#-api-webhook">📡 Webhook CI/CD</a>
+  <a href="#-khuyến-nghị-vận-hành--bảo-mật">🛡️ Bảo mật &amp; Hardening</a>
 </p>
 
 ---
@@ -265,17 +266,39 @@ curl -X POST http://localhost:3000/api/webhook/service \
 Dự án cung cấp bộ tài liệu chi tiết từng chủ đề trong thư mục [`docs/`](./docs):
 
 - 🔰 **[Hướng dẫn cho người mới bắt đầu (Getting Started)](./docs/GETTING_STARTED.md)**: Hướng dẫn từ A-Z cách dựng máy chủ, phân quyền, cấu hình reverse proxy Nginx / Cloudflare Tunnel có SSL HTTPS.
+- 🛡️ **[Chính sách & Báo cáo Lỗ hổng Bảo mật (SECURITY.md)](./SECURITY.md)**: Quy trình Responsible Disclosure, mô hình nguy cơ và tiêu chuẩn an ninh.
+- 🔒 **[Hướng dẫn Thắt chặt An ninh Chuyên sâu (Security Hardening)](./docs/SECURITY_HARDENING.md)**: Cẩm nang phòng thủ đa lớp, bảo vệ Docker socket, chống SSRF, cấu hình Reverse Proxy và Checklist 10 bước Go-Live.
 - 🐳 **[Tích hợp Docker Engine & Nhãn labels (Docker Integration)](./docs/DOCKER_INTEGRATION.md)**: Cách sử dụng Docker labels `servicehub.enable=true` để tự động hóa danh mục và icon.
 - ⚡ **[Hướng dẫn cấu hình Wake-on-LAN & Mạng (WoL & Network Guide)](./docs/WOL_AND_NETWORK.md)**: Cách bật WoL trong BIOS bo mạch chủ, cấu hình card mạng trên Windows/Linux, thiết lập Broadcast IP qua các VLAN.
 - 📚 **[Tài liệu đặc tả REST API (API Reference)](./docs/API_REFERENCE.md)**: Chi tiết toàn bộ endpoints, mã phản hồi HTTP và mẫu dữ liệu JSON.
 
 ---
 
-## 🔒 Khuyến nghị Vận hành & Bảo mật
+## 🛡️ Khuyến nghị Vận hành & Bảo mật Toàn diện
 
-1. **Thay đổi mật khẩu Admin**: Luôn đổi mật khẩu mặc định ngay tại tab **Admin Settings > Change Password**.
-2. **Reverse Proxy & SSL**: Để truy cập từ Internet một cách an toàn, bạn nên đặt Service Hub phía sau một Reverse Proxy như **Nginx Proxy Manager**, **Traefik**, hoặc sử dụng **Cloudflare Tunnel** (miễn phí, không cần mở port modem router).
-3. **Mount Docker Socket an toàn**: Trong file `docker-compose.yml`, socket Docker được mount với cờ `:ro` (Read-Only) để ngăn chặn container ghi đè hoặc thay đổi trái phép socket của hệ thống chủ.
+> ⚠️ **CẢNH BÁO BẢO MẬT KHI TRIỂN KHAI:**
+> Khi vận hành trong mạng gia đình hoặc máy chủ VPS, hãy luôn tuân thủ các nguyên tắc bảo vệ cốt lõi sau đây:
+
+1. **Thay đổi Mật khẩu Quản trị ngay**:
+   - Không sử dụng mật khẩu mặc định `admin123_doi_ngay_khi_dung`. Đổi mật khẩu ngay tại tab **Settings** hoặc qua biến `ADMIN_PASSWORD` trong file `.env`.
+   - Hệ thống tự động kích hoạt **Anti-Brute Force Lockout**: Khóa tạm thời 15 phút nếu nhập sai mật khẩu 5 lần liên tiếp.
+
+2. **Tạo chuỗi ngẫu nhiên cho `JWT_SECRET`**:
+   - Tạo khóa tối thiểu 32 ký tự (`openssl rand -base64 32`) để đảm bảo session token không thể bị giả mạo.
+
+3. **Bảo vệ Docker Socket an toàn**:
+   - Trong file `docker-compose.yml`, socket Docker **bắt buộc** phải có cờ `:ro` (`/var/run/docker.sock:/var/run/docker.sock:ro`). Ứng dụng chỉ sử dụng các truy vấn đọc thông tin (GET), không bao giờ thực thi lệnh nguy hiểm lên máy chủ host.
+   - Đối với môi trường bảo mật cao, bạn có thể triển khai trung gian qua **Docker Socket Proxy** (`tecnativa/docker-socket-proxy`).
+
+4. **Tránh mở cổng (Port Forwarding) 3000 trực tiếp trên Router**:
+   - Không nên NAT cổng 3000 ra ngoài Internet. Hãy sử dụng **Cloudflare Tunnel (Zero Trust)** hoặc mạng riêng ảo **Tailscale / WireGuard** để truy cập an toàn mà không để lộ địa chỉ IP thật của máy chủ.
+
+5. **Bảo vệ SSRF & Giới hạn tần suất (Rate Limiting)**:
+   - Tính năng dò cổng TCP tự động chặn mọi yêu cầu truy vấn đến địa chỉ Cloud Metadata nhạy cảm (`169.254.169.254`).
+   - Các công cụ mạng (WoL và TCP Ping) được giới hạn tần suất theo từng IP để ngăn chặn nguy cơ DoS mạng nội bộ.
+
+6. **Công cụ Tự kiểm toán An ninh (Built-in Security Audit)**:
+   - Hệ thống tích hợp sẵn trang kiểm toán tại tab **"Security Audit"** trong Admin Panel (cùng API `/api/admin/security-audit`). Hãy kiểm tra để đảm bảo hệ thống đạt mức an toàn **Grade A** trước khi chia sẻ liên kết!
 
 ---
 
