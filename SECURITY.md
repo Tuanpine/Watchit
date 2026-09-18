@@ -17,7 +17,7 @@ Các phiên bản Service Hub được hỗ trợ bản vá an ninh:
 Nếu bạn phát hiện bất kỳ lỗ hổng bảo mật nào trong **Service Hub & Homelab Portal**, vui lòng thực hiện theo quy trình **Responsible Disclosure (Tiết lộ có trách nhiệm)**:
 
 1. **KHÔNG** tạo Public Issue trên GitHub để công khai lỗ hổng trước khi có bản vá.
-2. Gửi email chi tiết về mã lỗi, các bước tái hiện (Proof-of-Concept) tới: `security@service-hub.local` (hoặc liên hệ riêng qua GitHub Security Advisories).
+2. Gửi email chi tiết về mã lỗi, các bước tái hiện (Proof-of-Concept) tới: `pine2103@gmail.com` (hoặc liên hệ riêng qua GitHub Security Advisories).
 3. Nhóm phát triển sẽ phản hồi trong vòng **48 giờ** và cung cấp bản vá trong thời gian sớm nhất.
 
 ---
