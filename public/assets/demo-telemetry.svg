@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" width="100%" height="100%" style="background:#0b0f17; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <linearGradient id="glowTelem" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#0b0f17"/>
+      <stop offset="100%" stop-color="#06121e"/>
+    </linearGradient>
+    <filter id="modalShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="10" stdDeviation="15" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="620" fill="url(#glowTelem)"/>
+
+  <!-- Modal Container -->
+  <g transform="translate(60, 35)" filter="url(#modalShadow)">
+    <rect width="880" height="550" rx="16" fill="#131b28" stroke="#233044" stroke-width="1.5"/>
+
+    <!-- Header -->
+    <rect width="880" height="70" rx="16" fill="#172233"/>
+    <rect y="40" width="880" height="30" fill="#172233"/>
+    <rect x="25" y="16" width="38" height="38" rx="10" fill="#3b82f6" fill-opacity="0.2" stroke="#3b82f6" stroke-width="1"/>
+    <text x="35" y="42" font-size="20">🐳</text>
+
+    <text x="75" y="34" font-size="16" font-weight="700" fill="#f8fafc">Nextcloud Hub (nextcloud-aio-mastercontainer)</text>
+    <text x="75" y="52" font-size="11" fill="#94a3b8">Docker Container ID: c4a8992e10 • Image: nextcloud:latest • Network: bridge</text>
+
+    <!-- Operational Badge & Restart button -->
+    <rect x="640" y="20" width="95" height="28" rx="14" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1"/>
+    <circle cx="655" cy="34" r="4" fill="#10b981"/>
+    <text x="666" y="38" font-size="11" font-weight="700" fill="#34d399">OPERATIONAL</text>
+
+    <rect x="750" y="20" width="105" height="28" rx="8" fill="#e11d48" fill-opacity="0.2" stroke="#e11d48" stroke-width="1"/>
+    <text x="765" y="38" font-size="11" font-weight="600" fill="#fb7185">🔄 Restart</text>
+
+    <!-- Metrics Cards (4 columns) -->
+    <g transform="translate(25, 85)">
+      <!-- CPU -->
+      <g transform="translate(0, 0)">
+        <rect width="195" height="85" rx="10" fill="#0c121d" stroke="#1e293b" stroke-width="1"/>
+        <text x="15" y="24" font-size="10" font-weight="600" fill="#64748b">CPU UTILIZATION</text>
+        <text x="15" y="54" font-size="22" font-family="monospace" font-weight="800" fill="#f8fafc">14.2%</text>
+        <!-- Bar -->
+        <rect x="15" y="65" width="165" height="6" rx="3" fill="#1e293b"/>
+        <rect x="15" y="65" width="24" height="6" rx="3" fill="#10b981"/>
+      </g>
+
+      <!-- RAM -->
+      <g transform="translate(210, 0)">
+        <rect width="195" height="85" rx="10" fill="#0c121d" stroke="#1e293b" stroke-width="1"/>
+        <text x="15" y="24" font-size="10" font-weight="600" fill="#64748b">RAM / MEMORY</text>
+        <text x="15" y="54" font-size="22" font-family="monospace" font-weight="800" fill="#f8fafc">1.2 GB <tspan font-size="12" fill="#64748b">/ 8 GB</tspan></text>
+        <rect x="15" y="65" width="165" height="6" rx="3" fill="#1e293b"/>
+        <rect x="15" y="65" width="40" height="6" rx="3" fill="#38bdf8"/>
+      </g>
+
+      <!-- Latency -->
+      <g transform="translate(420, 0)">
+        <rect width="195" height="85" rx="10" fill="#0c121d" stroke="#1e293b" stroke-width="1"/>
+        <text x="15" y="24" font-size="10" font-weight="600" fill="#64748b">HTTP RESPONSE PING</text>
+        <text x="15" y="54" font-size="22" font-family="monospace" font-weight="800" fill="#34d399">12 ms</text>
+        <text x="15" y="72" font-size="10" fill="#94a3b8">HTTP 200 OK • 100% SLA</text>
+      </g>
+
+      <!-- Uptime -->
+      <g transform="translate(630, 0)">
+        <rect width="200" height="85" rx="10" fill="#0c121d" stroke="#1e293b" stroke-width="1"/>
+        <text x="15" y="24" font-size="10" font-weight="600" fill="#64748b">CONTINUOUS UPTIME</text>
+        <text x="15" y="54" font-size="22" font-family="monospace" font-weight="800" fill="#f8fafc">14d 6h</text>
+        <text x="15" y="72" font-size="10" fill="#94a3b8">Started: Sep 04, 2026</text>
+      </g>
+    </g>
+
+    <!-- Live Telemetry Graph & Log Terminal -->
+    <g transform="translate(25, 185)">
+      <!-- Left: Real-time Telemetry Trend -->
+      <g transform="translate(0, 0)">
+        <rect width="410" height="315" rx="10" fill="#0c121d" stroke="#1e293b" stroke-width="1"/>
+        <text x="18" y="28" font-size="12" font-weight="700" fill="#f8fafc">Biểu đồ tải CPU &amp; Bộ nhớ (Real-time)</text>
+        
+        <!-- Grid lines -->
+        <line x1="18" y1="60" x2="390" y2="60" stroke="#1e293b" stroke-dasharray="3,3"/>
+        <line x1="18" y1="120" x2="390" y2="120" stroke="#1e293b" stroke-dasharray="3,3"/>
+        <line x1="18" y1="180" x2="390" y2="180" stroke="#1e293b" stroke-dasharray="3,3"/>
+        <line x1="18" y1="240" x2="390" y2="240" stroke="#1e293b" stroke-dasharray="3,3"/>
+
+        <!-- Sparkline Waves -->
+        <path d="M 18,220 Q 80,200 130,215 T 230,190 T 320,160 T 390,170" fill="none" stroke="#10b981" stroke-width="2.5"/>
+        <path d="M 18,220 Q 80,200 130,215 T 230,190 T 320,160 T 390,170 L 390,260 L 18,260 Z" fill="#10b981" fill-opacity="0.08"/>
+
+        <path d="M 18,170 Q 70,165 140,150 T 250,170 T 340,140 T 390,145" fill="none" stroke="#38bdf8" stroke-width="2"/>
+
+        <circle cx="390" cy="170" r="4" fill="#10b981"/>
+        <circle cx="390" cy="145" r="4" fill="#38bdf8"/>
+
+        <text x="25" y="280" font-size="11" fill="#10b981">● CPU Usage (14.2%)</text>
+        <text x="180" y="280" font-size="11" fill="#38bdf8">● Memory Usage (15.0%)</text>
+      </g>
+
+      <!-- Right: Container Output Logs -->
+      <g transform="translate(425, 0)">
+        <rect width="405" height="315" rx="10" fill="#070b12" stroke="#1e293b" stroke-width="1"/>
+        <!-- Terminal Bar -->
+        <rect width="405" height="32" rx="10" fill="#0f172a"/>
+        <rect y="20" width="405" height="12" fill="#0f172a"/>
+        <circle cx="20" cy="16" r="4" fill="#ef4444"/>
+        <circle cx="34" cy="16" r="4" fill="#f59e0b"/>
+        <circle cx="48" cy="16" r="4" fill="#10b981"/>
+        <text x="65" y="20" font-size="11" font-family="monospace" fill="#94a3b8">docker logs -f nextcloud (Live Stream)</text>
+
+        <!-- Logs lines -->
+        <g font-family="monospace" font-size="10" fill="#94a3b8" transform="translate(15, 52)">
+          <text y="0" fill="#64748b">[2026-09-17 14:30:01] <tspan fill="#34d399">INFO</tspan> Apache/2.4.58 (Debian) configured</text>
+          <text y="20" fill="#64748b">[2026-09-17 14:30:02] <tspan fill="#34d399">INFO</tspan> Redis cache connected on port 6379</text>
+          <text y="40" fill="#64748b">[2026-09-17 14:30:05] <tspan fill="#34d399">INFO</tspan> Cron job executed: 0 errors detected</text>
+          <text y="60" fill="#64748b">[2026-09-17 14:30:12] <tspan fill="#38bdf8">HTTP</tspan> GET /index.php/apps/files/ 200 OK (8ms)</text>
+          <text y="80" fill="#64748b">[2026-09-17 14:30:18] <tspan fill="#38bdf8">HTTP</tspan> PROPFIND /remote.php/dav/files/ 207 Multi-Status</text>
+          <text y="100" fill="#64748b">[2026-09-17 14:30:25] <tspan fill="#34d399">INFO</tspan> Healthcheck: Status green, all workers idle</text>
+          <text y="120" fill="#64748b">[2026-09-17 14:30:30] <tspan fill="#38bdf8">HTTP</tspan> GET /status.php - 200 OK (response 4ms)</text>
+          <text y="140" fill="#64748b">[2026-09-17 14:30:33] <tspan fill="#10b981">STREAM</tspan> WebDAV client sync finished in 0.12s</text>
+          <text y="170" fill="#34d399">_ &gt; Listening for incoming container events...</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Footer -->
+    <text x="25" y="525" font-size="11" fill="#64748b">Self-Hosted Docker Engine API v1.43 • Direct socket stream via /var/run/docker.sock</text>
+  </g>
+</svg>

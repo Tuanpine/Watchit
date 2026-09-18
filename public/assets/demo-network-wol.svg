@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" width="100%" height="100%" style="background:#0b0f17; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <linearGradient id="glowWol" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="50%" stop-color="#0b0f17"/>
+      <stop offset="100%" stop-color="#090d16"/>
+    </linearGradient>
+    <filter id="modalShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="10" stdDeviation="15" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="620" fill="url(#glowWol)"/>
+
+  <!-- Modal Window Backdrop -->
+  <g transform="translate(60, 35)" filter="url(#modalShadow)">
+    <rect width="880" height="550" rx="16" fill="#131b28" stroke="#233044" stroke-width="1.5"/>
+
+    <!-- Modal Header -->
+    <rect width="880" height="65" rx="16" fill="#172233"/>
+    <rect y="40" width="880" height="25" fill="#172233"/>
+    <rect x="25" y="15" width="36" height="36" rx="10" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1"/>
+    <text x="35" y="38" font-size="18" fill="#34d399">⚡</text>
+
+    <text x="75" y="32" font-size="16" font-weight="700" fill="#f8fafc">Network Tools &amp; Wake-on-LAN (WoL)</text>
+    <text x="75" y="49" font-size="11" fill="#94a3b8">Đánh thức máy chủ qua Magic Packet và kiểm tra cổng mạng TCP / Switch / NAS / Printer</text>
+    <text x="840" y="38" font-size="18" fill="#64748b" cursor="pointer">✕</text>
+
+    <!-- Tab Bar -->
+    <g transform="translate(25, 78)">
+      <rect x="0" width="160" height="32" rx="8" fill="#10b981" fill-opacity="0.2" stroke="#10b981" stroke-width="1"/>
+      <text x="18" y="21" font-size="12" font-weight="600" fill="#34d399">Thiết bị mạng đã lưu (4)</text>
+
+      <rect x="170" width="180" height="32" rx="8" fill="#0f172a" stroke="#233044" stroke-width="1"/>
+      <text x="188" y="21" font-size="12" fill="#94a3b8">Gửi Magic Packet WoL tự do</text>
+
+      <rect x="360" width="160" height="32" rx="8" fill="#0f172a" stroke="#233044" stroke-width="1"/>
+      <text x="378" y="21" font-size="12" fill="#94a3b8">Dò cổng TCP / Ping Host</text>
+
+      <rect x="710" width="120" height="32" rx="8" fill="#10b981" stroke="#10b981" stroke-width="1"/>
+      <text x="726" y="21" font-size="12" font-weight="600" fill="#091e14">+ Thêm thiết bị</text>
+    </g>
+
+    <!-- Device Cards Grid -->
+    <g transform="translate(25, 130)">
+      <!-- Device 1: Proxmox Host -->
+      <g transform="translate(0, 0)">
+        <rect width="405" height="175" rx="12" fill="#0c121d" stroke="#1e293b" stroke-width="1"/>
+        <rect x="15" y="15" width="34" height="34" rx="8" fill="#3b82f6" fill-opacity="0.15"/>
+        <text x="23" y="37" font-size="16">🖥️</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">Proxmox PVE Hypervisor</text>
+        <text x="60" y="44" font-size="11" fill="#64748b">Dell PowerEdge R730xd (Server)</text>
+
+        <rect x="15" y="60" width="180" height="38" rx="6" fill="#131c2b"/>
+        <text x="25" y="75" font-size="9" fill="#64748b">IP &amp; PORT</text>
+        <text x="25" y="90" font-size="11" font-family="monospace" fill="#f8fafc">192.168.1.100:8006</text>
+
+        <rect x="205" y="60" width="185" height="38" rx="6" fill="#131c2b"/>
+        <text x="215" y="75" font-size="9" fill="#64748b">MAC ADDRESS (WOL)</text>
+        <text x="215" y="90" font-size="11" font-family="monospace" fill="#38bdf8">D4:BE:D9:18:22:9A</text>
+
+        <circle cx="25" cy="118" r="4" fill="#10b981"/>
+        <text x="36" y="122" font-size="11" fill="#34d399">Online (Port 8006 open - 4ms)</text>
+
+        <!-- Action Buttons -->
+        <rect x="15" y="132" width="180" height="30" rx="6" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1"/>
+        <text x="50" y="152" font-size="11" font-weight="600" fill="#34d399">⏻ Đánh thức (WoL)</text>
+
+        <rect x="205" y="132" width="185" height="30" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+        <text x="248" y="152" font-size="11" fill="#f8fafc">📡 Ping TCP Port</text>
+      </g>
+
+      <!-- Device 2: Synology NAS -->
+      <g transform="translate(425, 0)">
+        <rect width="405" height="175" rx="12" fill="#0c121d" stroke="#1e293b" stroke-width="1"/>
+        <rect x="15" y="15" width="34" height="34" rx="8" fill="#f59e0b" fill-opacity="0.15"/>
+        <text x="23" y="37" font-size="16">💾</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">Synology DS920+ NAS</text>
+        <text x="60" y="44" font-size="11" fill="#64748b">ZFS Backup &amp; SMB Storage (NAS)</text>
+
+        <rect x="15" y="60" width="180" height="38" rx="6" fill="#131c2b"/>
+        <text x="25" y="75" font-size="9" fill="#64748b">IP &amp; PORT</text>
+        <text x="25" y="90" font-size="11" font-family="monospace" fill="#f8fafc">192.168.1.150:5000</text>
+
+        <rect x="205" y="60" width="185" height="38" rx="6" fill="#131c2b"/>
+        <text x="215" y="75" font-size="9" fill="#64748b">MAC ADDRESS (WOL)</text>
+        <text x="215" y="90" font-size="11" font-family="monospace" fill="#38bdf8">00:11:32:B4:7A:1C</text>
+
+        <circle cx="25" cy="118" r="4" fill="#10b981"/>
+        <text x="36" y="122" font-size="11" fill="#34d399">Online (Port 5000 open - 2ms)</text>
+
+        <rect x="15" y="132" width="180" height="30" rx="6" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1"/>
+        <text x="50" y="152" font-size="11" font-weight="600" fill="#34d399">⏻ Đánh thức (WoL)</text>
+
+        <rect x="205" y="132" width="185" height="30" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+        <text x="248" y="152" font-size="11" fill="#f8fafc">📡 Ping TCP Port</text>
+      </g>
+
+      <!-- Device 3: UniFi Core Switch -->
+      <g transform="translate(0, 190)">
+        <rect width="405" height="175" rx="12" fill="#0c121d" stroke="#1e293b" stroke-width="1"/>
+        <rect x="15" y="15" width="34" height="34" rx="8" fill="#8b5cf6" fill-opacity="0.15"/>
+        <text x="23" y="37" font-size="16">📻</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">UniFi 24-Port PoE Switch</text>
+        <text x="60" y="44" font-size="11" fill="#64748b">Core Gigabit Layer 2 Switch</text>
+
+        <rect x="15" y="60" width="180" height="38" rx="6" fill="#131c2b"/>
+        <text x="25" y="75" font-size="9" fill="#64748b">IP &amp; PORT</text>
+        <text x="25" y="90" font-size="11" font-family="monospace" fill="#f8fafc">192.168.1.2:22</text>
+
+        <rect x="205" y="60" width="185" height="38" rx="6" fill="#131c2b"/>
+        <text x="215" y="75" font-size="9" fill="#64748b">MAC ADDRESS (WOL)</text>
+        <text x="215" y="90" font-size="11" font-family="monospace" fill="#38bdf8">B4:FB:E4:31:88:F2</text>
+
+        <circle cx="25" cy="118" r="4" fill="#10b981"/>
+        <text x="36" y="122" font-size="11" fill="#34d399">Online (SSH 22 open - 1ms)</text>
+
+        <rect x="15" y="132" width="180" height="30" rx="6" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1"/>
+        <text x="50" y="152" font-size="11" font-weight="600" fill="#34d399">⏻ Đánh thức (WoL)</text>
+
+        <rect x="205" y="132" width="185" height="30" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+        <text x="248" y="152" font-size="11" fill="#f8fafc">📡 Ping TCP Port</text>
+      </g>
+
+      <!-- Device 4: HP LaserJet Printer -->
+      <g transform="translate(425, 190)">
+        <rect width="405" height="175" rx="12" fill="#0c121d" stroke="#1e293b" stroke-width="1"/>
+        <rect x="15" y="15" width="34" height="34" rx="8" fill="#10b981" fill-opacity="0.15"/>
+        <text x="23" y="37" font-size="16">🖨️</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">HP OfficeJet Pro M404n</text>
+        <text x="60" y="44" font-size="11" fill="#64748b">Network Raw Printer (Port 9100)</text>
+
+        <rect x="15" y="60" width="180" height="38" rx="6" fill="#131c2b"/>
+        <text x="25" y="75" font-size="9" fill="#64748b">IP &amp; PORT</text>
+        <text x="25" y="90" font-size="11" font-family="monospace" fill="#f8fafc">192.168.1.180:9100</text>
+
+        <rect x="205" y="60" width="185" height="38" rx="6" fill="#131c2b"/>
+        <text x="215" y="75" font-size="9" fill="#64748b">MAC ADDRESS (WOL)</text>
+        <text x="215" y="90" font-size="11" font-family="monospace" fill="#38bdf8">98:E7:43:55:1A:E8</text>
+
+        <circle cx="25" cy="118" r="4" fill="#10b981"/>
+        <text x="36" y="122" font-size="11" fill="#34d399">Online (RAW 9100 open - 5ms)</text>
+
+        <rect x="15" y="132" width="180" height="30" rx="6" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1"/>
+        <text x="50" y="152" font-size="11" font-weight="600" fill="#34d399">⏻ Đánh thức (WoL)</text>
+
+        <rect x="205" y="132" width="185" height="30" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+        <text x="248" y="152" font-size="11" fill="#f8fafc">📡 Ping TCP Port</text>
+      </g>
+    </g>
+
+    <!-- Footer Notice -->
+    <text x="25" y="525" font-size="11" fill="#64748b">Gói tin UDP Magic Packet chuẩn 102 byte lặp 16 lần MAC • Hỗ trợ đánh thức từ trạng thái ngủ S3/S4/S5</text>
+  </g>
+</svg>
